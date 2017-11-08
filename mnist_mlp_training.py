@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torchvision.transforms as transforms
 
+# download data from MNIST and create mini-batch data loader
 torch.manual_seed(1122)
 
 trainset = torchvision.datasets.MNIST(root='./mnist', train=True,
@@ -23,26 +24,31 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=250,
                                          shuffle=True)
 
 
-class Net(nn.Module):
+# define and initialize a multilayer-perceptron, a criterion, and an optimizer
+class MLP(nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
-        self.l1 = nn.Linear(1*28*28, 20)
+        super(MLP, self).__init__()
+        self.l1 = nn.Linear(1 * 28 * 28, 20)
+        self.t1 = nn.Tanh()
         self.l2 = nn.Linear(20, 10)
+        self.t2 = nn.LogSoftmax()
 
     def forward(self, x):
         x = x.view(-1, 1*28*28)
-        x = nn.Tanh(self.l1(x))
-        x = nn.LogSoftmax(self.l2(x))
+        x = self.t1(self.l1(x))
+        x = self.t2(self.l2(x))
         return x
 
-mlp = Net()
+mlp = MLP()
 criterion = nn.NLLLoss()
 optimizer = optim.SGD(mlp.parameters(), lr=0.1, momentum=0.9)
 
-for epoch in range(30):
+
+# define a training epoch function
+def trainEpoch(dataloader, epoch):
     mlp.train()
     running_loss = 0
-    for i, data in enumerate(trainloader, 0):
+    for i, data in enumerate(dataloader, 0):
         inputs, labels = data
         inputs, labels = Variable(inputs), Variable(labels)
         optimizer.zero_grad()
@@ -51,20 +57,40 @@ for epoch in range(30):
         loss.backward()
         optimizer.step()
         running_loss += loss.data[0]
-        if i + 1 % 1000 == 0:
+        if (i + 1) % 50 == 0:
             print('[%d, %5d] loss: %.3f' %
-                  (epoch + 1, i + 1, running_loss / 2000))
+                  (epoch + 1, i + 1, running_loss / 50))
             running_loss = 0.0
+
+
+# define a testing function
+def testModel(dataloader):
     mlp.eval()
     test_loss = 0
     correct = 0
-    for inputs, targets in testloader:
+    for inputs, targets in dataloader:
         inputs, targets = Variable(inputs), Variable(targets)
         outputs = mlp(inputs)
-        test_loss += F.NLLLoss(outputs, targets, size_average=False).data[0]
+        test_loss += F.nll_loss(outputs, targets, size_average=False).data[0]
         pred = outputs.data.max(1, keepdim=True)[1]
         correct += pred.eq(targets.data.view_as(pred)).sum()
-    test_loss /= len(testloader.dataset)
+    test_loss /= len(dataloader.dataset)
     print('Test set: Average loss: {:.3f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(testloader.dataset),
+          test_loss, correct, len(testloader.dataset),
           100. * correct / len(testloader.dataset)))
+
+
+# run the training epoch 30 times and test the result
+for epoch in range(30):
+    trainEpoch(trainloader, epoch)
+
+testModel(testloader)
+
+"""DEBUGGING CODES
+# download one batch of data for input examination
+for i, data in enumerate(trainloader, 0):
+    inputs, labels = data
+    inputs, labels = Variable(inputs), Variable(labels)
+    if i > 0:
+        break
+"""
