@@ -38,3 +38,10 @@ This is my side project that builds a MLP model of the same structure as above i
 6. How to customize a `Dataset` class with imported data and utilize the `DataLoader` accordingly
 
 This model running with Python achieved the same level of accuracy with the same MINIST dataset. However, the model running on Python appears to be significantly faster than the LuaJIT runtime version when using only CPU. This might be related to the optimized `DataLoader` classes provided by the PyTorch package: the mini-batch iterations I hand-coded with Lua might take more time than the PyTorch built-in loader.
+
+## PyTorch NLP with RNN and LSTM
+This is my side project that uses PyTorch to create natural language processing models, following PyTorch's official tutorial on Deep Learning for NLP.
+
+* In **bow_classifier.py**, I created a model that works as logistic regression that is trained on Document Term Matrix created with Bag of Words algorithm.
+* In **trigram_word_embedding_network.py**, I created a word embedding network that takes in trigrams from corpus and predict the words based on its previous two context words.
+* In **CBOW_word_embedding_network.py**, I created a Continuous Bag of Word embedding network that takes in neighboring two words of any word in the corpus and generates the log probability of the specific word. This model can be used in more advanced language modeling systems and is often used for "embedding pretraining".
