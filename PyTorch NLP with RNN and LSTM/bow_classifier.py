@@ -17,6 +17,13 @@ data = [("me gusta comer en la cafeteria".split(), "SPANISH"),
         ("No creo que sea una buena idea".split(), "SPANISH"),
         ("No it is not a good idea to get lost at sea".split(), "ENGLISH")]
 
+print(data[0])
+
+"""
+The format of each row of data is:
+(['list','of','words'], 'target')
+"""
+
 test_data = [("Yo creo que si".split(), "SPANISH"),
              ("it is lost on me".split(), "ENGLISH")]
 
@@ -33,29 +40,49 @@ VOCAB_SIZE = len(word_to_ix)
 NUM_LABELS = 2
 
 
-# takes in vector of the len(word_to_ix), spits out log_probs of each class
-class BoWClassifier(nn.Module):
-    def __init__(self, num_labels, vocab_size):
-        super(BoWClassifier, self).__init__()
-        self.linear = nn.Linear(vocab_size, num_labels)
-
-    def forward(self, bow_vec):
-        return F.log_softmax(self.linear(bow_vec))
-
-
-# turn a sentence (list of words) into a vector using word_to_ix
-# alternatively, can use CountVectorizer
-# return data is a FloatTensor of shape 1 (batch size) by len(word_to_ix)
 def make_bow_vector(sentence, word_to_ix):
+    """
+Turn a sentence (list of words) into a vector using the dictionary (word_to_ix)
+return data is a FloatTensor of shape 1 (batch size) by len(word_to_ix)"""
     vec = torch.zeros(len(word_to_ix))
     for word in sentence:
         vec[word_to_ix[word]] += 1
     return vec.view(1, -1)
 
 
-# turn the labels into a dictionary where each label has a unique index
 def make_target(label, label_to_ix):
+    """Turn target labels into a numeric vector where each label has a
+    unique index"""
     return torch.LongTensor([label_to_ix[label]])
+# label_to_ix = {'SPANISH': 0, 'ENGLISH': 1}
+
+
+def return_label(label_ix, label_to_ix):
+    """Returns original label with the index"""
+    for key, value in label_to_ix.items():
+        if value == label_ix:
+            label = key
+    return label
+
+"""
+The above codes can be replaced with any sentence tokenizer that will create
+a "dictionary" for input data
+"""
+
+"""
+The basic model will give a log probability for each target label. So the
+output layer of the model should have len(unique(target)) neurons
+"""
+
+
+# takes in vector of the len(word_to_ix), spits out log_probs of each class
+class BoWClassifier(nn.Module):
+    def __init__(self, num_labels, vocab_size):
+        super(BoWClassifier, self).__init__()
+        self.linear = nn.Linear(vocab_size, num_labels)
+
+    def forward(self, bow_vec):  # input of the model should be the DTM
+        return F.log_softmax(self.linear(bow_vec))
 
 
 # initiate the model and check what's inside
@@ -70,14 +97,20 @@ bow_vector = make_bow_vector(sample[0], word_to_ix)
 print(bow_vector)
 log_probs = model(autograd.Variable(bow_vector))
 print(log_probs)
+
+
+# now we need to define the "target" by assigning numerical values to
+# the two target labels
 label_to_ix = {'SPANISH': 0, 'ENGLISH': 1}
 
-# Make predictions on the test data
+# Make initial predictions on the test data
 for instance, label in test_data:
     bow_vec = autograd.Variable(make_bow_vector(instance, word_to_ix))
     log_probs = model(bow_vec)
-    print(log_probs)
-print(next(model.parameters())[:, word_to_ix["creo"]])
+    decision = log_probs.topk(1)[1].data[0].numpy()[0]
+    label = return_label(decision, label_to_ix)
+    print("instance %s has decision %s" % (instance, label))
+
 
 loss_function = nn.NLLLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.1)
@@ -95,6 +128,10 @@ for epoch in range(100):
 for instance, label in test_data:
     bow_vec = autograd.Variable(make_bow_vector(instance, word_to_ix))
     log_probs = model(bow_vec)
-    print(log_probs)
+    decision = log_probs.topk(1)[1].data[0].numpy()[0]
+    label = return_label(decision, label_to_ix)
+    print("instance %s has decision %s" % (instance, label))
 
-print(next(model.parameters())[:, word_to_ix["creo"]])
+"""
+The model has converged using the optimization functions
+"""
